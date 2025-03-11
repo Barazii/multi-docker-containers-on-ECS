@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ECS Fargate with Frontend and Backend
+
+Parameters:
+  PrivateSubnetIds:
+    Type: CommaDelimitedList
+    Default: subnet-0c98a8f9c0a9c1861,subnet-01b3d1e9703fbf81d,subnet-07424e7802815add5
+  BackendImage:
+    Type: String
+    Default: 482497089777.dkr.ecr.eu-north-1.amazonaws.com/backend:latest
+  SecurityGroup:
+    Type: CommaDelimitedList
+    Default: sg-03cf1a20eeab2a1e9
+  Namespace:
+    Type: String
+    Default: cluster
+  BackendServicePortName:
+    Type: String
+    Default: backend-8080-tcp
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: cluster
+
+  BackendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: backend
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: 256
+      Memory: 512
+      ExecutionRoleArn: arn:aws:iam::482497089777:role/ecsTaskExecutionRole
+      ContainerDefinitions:
+        - Name: backend
+          Image: !Ref BackendImage
+          PortMappings:
+            - ContainerPort: 8080
+              Name: !Ref BackendServicePortName
+              Protocol: tcp
+          Essential: true
+
+  BackendService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: backend
+      TaskDefinition: !Ref BackendTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref PrivateSubnetIds
+          SecurityGroups: !Ref SecurityGroup
+          AssignPublicIp: DISABLED
+      ServiceConnectConfiguration:
+        Enabled: true
+        Namespace: !Ref Namespace
+        Services: 
+          - ClientAliases:
+            - Port: 8080
+              DnsName: backend.cluster #${SERVICE_NAME}.${NAMESPACE}
+            DiscoveryName: backend
+            PortName: !Ref BackendServicePortName

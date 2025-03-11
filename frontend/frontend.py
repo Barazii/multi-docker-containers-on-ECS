@@ -10,7 +10,7 @@ backend_url = os.getenv('BACKEND_SERVICE_URL')
 @app.route('/')
 def index():
     response = requests.get(f"{backend_url}/data")
-    return f"It is {hostname}.\n{response.text}"
+    return f"It is frontend {hostname}. Message from backend: #{response.text}#"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)

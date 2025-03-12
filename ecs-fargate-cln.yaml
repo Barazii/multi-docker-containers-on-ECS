@@ -8,6 +8,9 @@ Parameters:
   BackendImage:
     Type: String
     Default: 482497089777.dkr.ecr.eu-north-1.amazonaws.com/backend:latest
+  FrontendImage:
+    Type: String
+    Default: 482497089777.dkr.ecr.eu-north-1.amazonaws.com/frontend:latest
   SecurityGroup:
     Type: CommaDelimitedList
     Default: sg-03cf1a20eeab2a1e9
@@ -17,6 +20,9 @@ Parameters:
   BackendServicePortName:
     Type: String
     Default: backend-8080-tcp
+  # FrontendServicePortName:
+  #   Type: String
+  #   Default: frontend-80-tcp
 
 Resources:
   ECSCluster:
@@ -43,6 +49,28 @@ Resources:
               Protocol: tcp
           Essential: true
 
+  FrontendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: frontend
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: 256
+      Memory: 512
+      ExecutionRoleArn: arn:aws:iam::482497089777:role/ecsTaskExecutionRole
+      ContainerDefinitions:
+        - Name: frontend
+          Image: !Ref FrontendImage
+          PortMappings:
+            - ContainerPort: 80
+              # Name: !Ref FrontendServicePortName
+              Protocol: tcp
+          Essential: true
+          Environment:
+            - Name: BACKEND_SERVICE_URL
+              Value: http://backend.cluster:8080
+
   BackendService:
     Type: AWS::ECS::Service
     Properties:
@@ -62,6 +90,33 @@ Resources:
         Services: 
           - ClientAliases:
             - Port: 8080
-              DnsName: backend.cluster #${SERVICE_NAME}.${NAMESPACE}
+              DnsName: backend.cluster
             DiscoveryName: backend
             PortName: !Ref BackendServicePortName
+
+  FrontendService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: frontend
+      TaskDefinition: !Ref FrontendTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref PrivateSubnetIds
+          SecurityGroups: !Ref SecurityGroup
+          AssignPublicIp: DISABLED
+      ServiceConnectConfiguration:
+        Enabled: true
+        Namespace: !Ref Namespace
+        # Services:
+        #   - ClientAliases:
+        #     - Port: 8080
+        #       DnsName: backend.cluster
+        #     DiscoveryName: backend
+        #     PortName: !Ref BackendServicePortName
+      LoadBalancers:
+        - ContainerName: frontend
+          ContainerPort: 80
+          TargetGroupArn: arn:aws:elasticloadbalancing:eu-north-1:482497089777:targetgroup/tg/81a0af7bc54e8359

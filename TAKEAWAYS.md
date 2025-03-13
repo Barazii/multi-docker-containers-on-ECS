@@ -1,0 +1,2 @@
+For running multiple microservices/microapplications/containers, one task family for each one.
+Network load balancer links public subnet to private subnet. One load balancer can have multiple listeners, each listener linked to a different target group which is linked to a container family.

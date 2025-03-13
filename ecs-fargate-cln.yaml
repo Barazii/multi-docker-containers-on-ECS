@@ -109,7 +109,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       Name: tg
-      Port: 80
+      Port: 80 # matches frontend task definition 
       Protocol: TCP
       VpcId: !Ref VpcId
       TargetType: ip
@@ -120,7 +120,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref NetworkLoadBalancer
-      Port: 80  # Listener port
+      Port: 80  # Listener port (can be different from the frontend container's port)
       Protocol: TCP
       DefaultActions:
         - Type: forward
@@ -145,5 +145,5 @@ Resources:
         Namespace: !Ref Namespace
       LoadBalancers:
         - ContainerName: frontend
-          ContainerPort: 80
+          ContainerPort: 80 # matches frontend task definition
           TargetGroupArn: !Ref TargetGroup

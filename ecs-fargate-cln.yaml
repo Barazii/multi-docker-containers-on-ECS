@@ -2,6 +2,9 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: ECS Fargate with Frontend and Backend
 
 Parameters:
+  PublicSubnetIds:
+    Type: CommaDelimitedList
+    Default: subnet-0a3edff2547c09e44,subnet-09643acd5ad55b251,subnet-0561b9cca7629ab3f
   PrivateSubnetIds:
     Type: CommaDelimitedList
     Default: subnet-0c98a8f9c0a9c1861,subnet-01b3d1e9703fbf81d,subnet-07424e7802815add5
@@ -20,6 +23,9 @@ Parameters:
   BackendServicePortName:
     Type: String
     Default: backend-8080-tcp
+  VpcId:
+    Type: String
+    Default:  vpc-00cd5dde34aef55a7
   # FrontendServicePortName:
   #   Type: String
   #   Default: frontend-80-tcp
@@ -94,8 +100,39 @@ Resources:
             DiscoveryName: backend
             PortName: !Ref BackendServicePortName
 
+  NetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: nlb
+      Type: network
+      Subnets: !Ref PublicSubnetIds
+      Scheme: internet-facing
+      SecurityGroups: !Ref SecurityGroup
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: tg
+      Port: 80
+      Protocol: TCP
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckProtocol: TCP
+      HealthCheckPort: traffic-port
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref NetworkLoadBalancer
+      Port: 80  # Listener port
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
   FrontendService:
     Type: AWS::ECS::Service
+    # DependsOn: Listener
     Properties:
       Cluster: !Ref ECSCluster
       ServiceName: frontend
@@ -116,7 +153,7 @@ Resources:
         #       DnsName: backend.cluster
         #     DiscoveryName: backend
         #     PortName: !Ref BackendServicePortName
-      LoadBalancers:
-        - ContainerName: frontend
-          ContainerPort: 80
-          TargetGroupArn: arn:aws:elasticloadbalancing:eu-north-1:482497089777:targetgroup/tg/81a0af7bc54e8359
+      # LoadBalancers:
+      #   - ContainerName: frontend
+      #     ContainerPort: 80
+      #     TargetGroupArn: !Ref TargetGroup

@@ -26,9 +26,6 @@ Parameters:
   VpcId:
     Type: String
     Default:  vpc-00cd5dde34aef55a7
-  # FrontendServicePortName:
-  #   Type: String
-  #   Default: frontend-80-tcp
 
 Resources:
   ECSCluster:
@@ -70,7 +67,6 @@ Resources:
           Image: !Ref FrontendImage
           PortMappings:
             - ContainerPort: 80
-              # Name: !Ref FrontendServicePortName
               Protocol: tcp
           Essential: true
           Environment:
@@ -132,7 +128,7 @@ Resources:
 
   FrontendService:
     Type: AWS::ECS::Service
-    # DependsOn: Listener
+    DependsOn: Listener
     Properties:
       Cluster: !Ref ECSCluster
       ServiceName: frontend
@@ -147,13 +143,7 @@ Resources:
       ServiceConnectConfiguration:
         Enabled: true
         Namespace: !Ref Namespace
-        # Services:
-        #   - ClientAliases:
-        #     - Port: 8080
-        #       DnsName: backend.cluster
-        #     DiscoveryName: backend
-        #     PortName: !Ref BackendServicePortName
-      # LoadBalancers:
-      #   - ContainerName: frontend
-      #     ContainerPort: 80
-      #     TargetGroupArn: !Ref TargetGroup
+      LoadBalancers:
+        - ContainerName: frontend
+          ContainerPort: 80
+          TargetGroupArn: !Ref TargetGroup
